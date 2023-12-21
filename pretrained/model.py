@@ -1,3 +1,4 @@
+import argparse
 import json
 import re
 import numpy as np
@@ -73,22 +74,40 @@ def pred_2_category(df_transactions, outputs, class_map):
     return df_transactions
 
 
+def get_args():
+    """
+    Get command-line arguments
+    """
+    parser = argparse.ArgumentParser(description='Pretrained')
+    parser.add_argument('--input_file_path')
+    parser.add_argument('--model_name')
+    parser.add_argument('--tokenizer_name')
+    parser.add_argument('--class_labels_mapping')
+    parser.add_argument('--output_file_path')
+
+    args = parser.parse_args()
+
+    return args
+
+
 if __name__ == "__main__":
+    # Get command-line arguments
+    args = get_args()
     # Read transactions dataset
-    df_transactions = pd.read_csv('./bank_transactions.csv')
+    df_transactions = pd.read_csv(args.input_file_path)
     # clean transaction descriptions
     df_transactions['Description'] = df_transactions['Description'].apply(lambda x: clean_descriptions(x))
     # Load pretrained model, tokenizer, and class labels
-    model = AutoModelForSequenceClassification.from_pretrained('mgrella/autonlp-bank-transaction-classification-5521155')
-    tokenizer = AutoTokenizer.from_pretrained('mgrella/autonlp-bank-transaction-classification-5521155')
+    model = AutoModelForSequenceClassification.from_pretrained(args.model_name)
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name)
     classes = model.config.id2label
     # obtain predictions from pretrained model
     predictions = get_predictions_from_pretrained(model, tokenizer, classes, df_transactions)
     # load class mapping from json file
-    class_map = json.loads('classes.json')
+    class_map = json.loads(args.class_labels_mapping)
     # get final output dataset
     categorized_transactions = pred_2_category(df_transactions, predictions, class_map)
     # write csv to local path
-    categorized_transactions.to_csv('categorized_pretrained.csv')
+    categorized_transactions.to_csv(args.output_file_path, index=False)
 
 

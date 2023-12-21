@@ -1,3 +1,4 @@
+import argparse
 import json
 import ast
 import openai
@@ -45,16 +46,33 @@ def get_chat(model, system_prompt, descriptions):
   return response['choices'][0]['message']['content']
 
 
+def get_args():
+  """
+  Get command-line arguments
+  """
+  parser = argparse.ArgumentParser(description='ChatGPT')
+  parser.add_argument('--model_name', type=str, default='gpt-3.5-turbo', help='ChatGPT model')
+  parser.add_argument('--system_prompt_path', type=str, help='System prompt')
+  parser.add_argument('--input_file_path')
+  parser.add_argument('--output_file_path')
+
+  args = parser.parse_args()
+
+  return args
+   
+
 if __name__ == "__main__":
+    # Get command-line arguments
+    args = get_args()
     # Read transactions dataset
-    df_transactions = pd.read_csv('./bank_transactions.csv')
+    df_transactions = pd.read_csv(args.input_file_path)
     # split dataset into income and expenses
     expenses, income = split_dataset(df_transactions)
     # Load system prompts for income and expense
-    system_prompts = json.loads('system.json')
+    system_prompts = json.loads(args.system_prompt_path)
     # get labels from ChatGPT
-    labels_expense = get_chat('gpt-3.5-turbo', system_prompts['system_prompt_expense'], str(expenses['Description'].tolist()))
-    labels_income = get_chat('gpt-3.5-turbo', system_prompts['system_prompt_income'], str(income['Description'].tolist()))
+    labels_expense = get_chat(args.model_name, system_prompts['system_prompt_expense'], str(expenses['Description'].tolist()))
+    labels_income = get_chat(args.model_name, system_prompts['system_prompt_income'], str(income['Description'].tolist()))
     # Transform string representations of list from ChatGPT to actual Python list
     labels_expense = ast.literal_eval(labels_expense)
     labels_income = ast.literal_eval(labels_income)
@@ -64,6 +82,6 @@ if __name__ == "__main__":
     # Merge for final output dataframe
     categorized_transactions = pd.concat([expenses, income], axis=0)
     # Write output dataframe to local file path
-    categorized_transactions.to_csv('categorized_gpt.csv')
+    categorized_transactions.to_csv(args.output_file_path, index=False)
 
 
